@@ -1,0 +1,76 @@
+name: Multi-Arch Build
+
+on:
+  pull_request:
+  push:
+    branches: [ master, main ]
+
+permissions:
+  contents: read
+
+jobs:
+  native:
+    name: native ${{ matrix.goarch }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { runner: ubuntu-24.04,     goarch: amd64 }
+          - { runner: ubuntu-24.04-arm, goarch: arm64 }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+      - name: build
+        run: CGO_ENABLED=1 go build ./...
+      - name: test
+        run: CGO_ENABLED=1 go test ./...
+
+  cross:
+    name: cross ${{ matrix.goarch }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { goarch: loong64, pkg: gcc-14-loongarch64-linux-gnu, cc: loongarch64-linux-gnu-gcc-14 }
+          - { goarch: riscv64, pkg: gcc-riscv64-linux-gnu,         cc: riscv64-linux-gnu-gcc }
+          - { goarch: ppc64le, pkg: gcc-powerpc64le-linux-gnu,     cc: powerpc64le-linux-gnu-gcc }
+          - { goarch: arm,     pkg: gcc-arm-linux-gnueabihf,       cc: arm-linux-gnueabihf-gcc, goarm: "7" }
+          - { goarch: "386",   pkg: gcc-multilib,                  cc: "gcc -m32" }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+      - name: install cross toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ${{ matrix.pkg }}
+      - name: cross build
+        env:
+          CGO_ENABLED: "1"
+          GOOS: linux
+          GOARCH: ${{ matrix.goarch }}
+          GOARM: ${{ matrix.goarm }}
+          CC: ${{ matrix.cc }}
+        run: go build ./...
+
+  windows:
+    name: windows amd64
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+      - name: build
+        env:
+          CGO_ENABLED: "1"
+        run: go build ./...
+      - name: test
+        env:
+          CGO_ENABLED: "1"
+        run: go test ./...
