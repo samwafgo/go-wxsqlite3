@@ -6,7 +6,7 @@ import (
 	"log"
 	"net/url"
 	"os"
-	_ "github.com/Jathon-yang/go-wxsqlite3"
+	_ "github.com/samwafgo/go-wxsqlite3"
 )
 
 func main() {
